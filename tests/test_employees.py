@@ -1,11 +1,8 @@
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
 
-from app.main import app, db
-
-client = TestClient(app)
+from app.main import db
 
 
 @pytest.fixture
@@ -38,11 +35,11 @@ def test_uses_test_database():
     assert "attendance_test_db" in str(db.name)
 
 
-def test_create_employee(employee_data):
-
-    print("Created employee code:", employee_data["emp_code"])
+def test_create_employee(client, employee_data):
 
     response = client.post("/employees", json=employee_data)
+
+    assert db.employees.find_one({"emp_code": employee_data["emp_code"]}) is not None
 
     assert response.status_code == 201
 
@@ -54,7 +51,7 @@ def test_create_employee(employee_data):
     assert response_data["joined_on"] == employee_data["joined_on"]
 
 
-def test_duplicate_employee(employee_data):
+def test_duplicate_employee(client, employee_data):
 
     response = client.post("/employees", json=employee_data)
 
@@ -71,7 +68,7 @@ def test_duplicate_employee(employee_data):
     assert response.status_code == 409
 
 
-def test_missing_field(missing_field_employee_data):
+def test_missing_field(client, missing_field_employee_data):
 
     response = client.post("/employees", json=missing_field_employee_data)
 
