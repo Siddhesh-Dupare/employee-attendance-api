@@ -1,4 +1,5 @@
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -63,21 +64,41 @@ def test_missing_field(client, missing_field_employee_data):
 
 
 def test_invalid_shift_time_format(client, employee_data):
-    data = employee_data.copy()
-    data["shift_start"] = "9:30"
+    employee_data["shift_start"] = "9:30"
 
-    response = client.post("/employees", json=data)
+    response = client.post("/employees", json=employee_data)
 
     assert response.status_code == 422
-    assert db.employees.find_one({"emp_code": data["emp_code"]}) is None
+    assert db.employees.find_one({"emp_code": employee_data["emp_code"]}) is None
 
 
 def test_shift_start_and_end_same(client, employee_data):
-    data = employee_data.copy()
-    data["shift_start"] = "09:30"
-    data["shift_end"] = "09:30"
+    employee_data["shift_start"] = "09:30"
+    employee_data["shift_end"] = "09:30"
 
-    response = client.post("/employees", json=data)
+    response = client.post("/employees", json=employee_data)
 
     assert response.status_code == 422
-    assert db.employees.find_one({"emp_code": data["emp_code"]}) is None
+    assert db.employees.find_one({"emp_code": employee_data["emp_code"]}) is None
+
+
+def test_duplicate_employee_creates_exactly_one_success(client, employee_data):
+    number_of_requests = 10
+
+    def create_employee(_):
+        response = client.post("/employees", json=employee_data)
+        return response.status_code
+
+    try:
+        with ThreadPoolExecutor(max_workers=number_of_requests) as executor:
+            statuses = list(executor.map(create_employee, range(number_of_requests)))
+
+        assert statuses.count(201) == 1
+        assert statuses.count(409) == number_of_requests - 1
+
+        assert (
+            db.employees.count_documents({"emp_code": employee_data["emp_code"]}) == 1
+        )
+
+    finally:
+        db.employees.delete_many({"emp_code": employee_data["emp_code"]})

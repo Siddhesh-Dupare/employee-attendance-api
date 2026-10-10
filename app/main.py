@@ -17,12 +17,14 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, field_validator, model_validator
 from pymongo import MongoClient
-from pymongo.errors import PyMongoError
+from pymongo.errors import DuplicateKeyError, PyMongoError
 
 load_dotenv()
 
 client = MongoClient(os.getenv("MONGO_URI", "mongodb://localhost:27017"))
 db = client[os.getenv("MONGO_DB", "attendance_db")]
+
+db.employees.create_index("emp_code", unique=True)
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -105,7 +107,12 @@ def create_employee(body: EmployeeIn):
         raise HTTPException(409, "emp_code already exists")
     doc = body.model_dump()
     doc["created_at"] = datetime.now()
-    db.employees.insert_one(doc)
+
+    try:
+        db.employees.insert_one(doc)
+    except DuplicateKeyError:
+        raise HTTPException(409, "emp_code already exists")
+
     doc.pop("_id", None)
     return doc
 
