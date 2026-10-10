@@ -1,3 +1,6 @@
+import uuid
+
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app, db
@@ -5,39 +8,30 @@ from app.main import app, db
 client = TestClient(app)
 
 
-def test_uses_test_database():
-    assert "attendance_test_db" in str(db.name)
-
-
-# def test_create_employee():
-#     employee_data = {
-#         "emp_code": "E001",
-#         "name": "Test Employee",
-#         "email": "test@gmail.com",
-#         "department": "Engineering",
-#         "joined_on": "2026-10-10",
-#     }
-#
-#     response = client.post("/employees", json=employee_data)
-#
-#     assert response.status_code == 201
-#
-#     response_data = response.json()
-#     assert response_data["emp_code"] == employee_data["emp_code"]
-#     assert response_data["name"] == employee_data["name"]
-#     assert response_data["email"] == employee_data["email"]
-#     assert response_data["department"] == employee_data["department"]
-#     assert response_data["joined_on"] == employee_data["joined_on"]
-
-
-def test_duplicate_employee():
-    employee_data = {
-        "emp_code": "E002",
+@pytest.fixture
+def employee_data():
+    return {
+        "emp_code": str(uuid.uuid4()),
         "name": "Test Employee",
         "email": "test@gmail.com",
         "department": "Engineering",
         "joined_on": "2026-10-10",
     }
+
+
+@pytest.fixture
+def missing_field_employee_data():
+    return {
+        "emp_code": str(uuid.uuid4()),
+        "name": "Test Employee",
+    }
+
+
+def test_uses_test_database():
+    assert "attendance_test_db" in str(db.name)
+
+
+def test_create_employee(employee_data):
 
     response = client.post("/employees", json=employee_data)
 
@@ -50,13 +44,27 @@ def test_duplicate_employee():
     assert response_data["department"] == employee_data["department"]
     assert response_data["joined_on"] == employee_data["joined_on"]
 
-    new_employee_data = {
-        "emp_code": "E002",
-        "name": "Test Employee 2",
-        "email": "test@gmail.com",
-        "department": "Engineering",
-        "joined_on": "2026-10-10",
-    }
 
-    response = client.post("/employees", json=new_employee_data)
+def test_duplicate_employee(employee_data):
+
+    response = client.post("/employees", json=employee_data)
+
+    assert response.status_code == 201
+
+    response_data = response.json()
+    assert response_data["emp_code"] == employee_data["emp_code"]
+    assert response_data["name"] == employee_data["name"]
+    assert response_data["email"] == employee_data["email"]
+    assert response_data["department"] == employee_data["department"]
+    assert response_data["joined_on"] == employee_data["joined_on"]
+
+    response = client.post("/employees", json=employee_data)
     assert response.status_code == 409
+
+
+def test_missing_field(missing_field_employee_data):
+
+    response = client.post("/employees", json=missing_field_employee_data)
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["body", "email"]
