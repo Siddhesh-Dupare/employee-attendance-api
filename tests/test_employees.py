@@ -60,3 +60,24 @@ def test_missing_field(client, missing_field_employee_data):
 
     assert response.status_code == 422
     assert response.json()["detail"][0]["loc"] == ["body", "email"]
+
+
+def test_invalid_shift_time_format(client, employee_data):
+    data = employee_data.copy()
+    data["shift_start"] = "9:30"
+
+    response = client.post("/employees", json=data)
+
+    assert response.status_code == 422
+    assert db.employees.find_one({"emp_code": data["emp_code"]}) is None
+
+
+def test_shift_start_and_end_same(client, employee_data):
+    data = employee_data.copy()
+    data["shift_start"] = "09:30"
+    data["shift_end"] = "09:30"
+
+    response = client.post("/employees", json=data)
+
+    assert response.status_code == 422
+    assert db.employees.find_one({"emp_code": data["emp_code"]}) is None

@@ -14,8 +14,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, status
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, field_validator, model_validator
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 
@@ -61,6 +61,25 @@ class EmployeeIn(BaseModel):
     shift_end: str = "18:30"
     joined_on: str
 
+    @field_validator("shift_start", "shift_end")
+    @classmethod
+    def validate_shift_time_format(cls, value):
+        try:
+            parsed = datetime.strptime(value, "%H:%M")
+        except ValueError:
+            raise ValueError("Shift time must use HH:MM format")
+
+        if parsed.strftime("%H:%M") != value:
+            raise ValueError("Shift time must use HH:MM format")
+
+        return value
+
+    @model_validator(mode="after")
+    def validate_shift_times(self):
+        if self.shift_start == self.shift_end:
+            raise ValueError("Shift start and end times cannot be the same")
+        return self
+
 
 class PunchInIn(BaseModel):
     emp_code: str
@@ -77,10 +96,7 @@ def health():
         client.admin.command("ping")
         return {"status": "ok"}
     except PyMongoError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="MongoDB is not available",
-        )
+        raise HTTPException(503, "mongodb is not available")
 
 
 @app.post("/employees", status_code=201)

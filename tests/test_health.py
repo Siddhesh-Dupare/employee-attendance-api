@@ -27,5 +27,5 @@ def test_health_check_mongodb_unavailable():
 
     assert response.status_code == 503
     assert response.json() == {
-        "detail": "MongoDB is not available",
+        "detail": "mongodb is not available",
     }
