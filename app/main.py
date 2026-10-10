@@ -103,6 +103,7 @@ def list_employees(
 def punch_in(body: PunchInIn):
     emp = db.employees.find_one({"emp_code": body.emp_code})
 
+    # check if nonexistent employee
     if not emp:
         raise HTTPException(404, "employee not found")
 
