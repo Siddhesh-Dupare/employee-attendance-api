@@ -10,7 +10,7 @@ client = TestClient(app)
 
 @pytest.fixture
 def employee_data():
-    return {
+    data = {
         "emp_code": str(uuid.uuid4()),
         "name": "Test Employee",
         "email": "test@gmail.com",
@@ -18,20 +18,29 @@ def employee_data():
         "joined_on": "2026-10-10",
     }
 
+    yield data
+    db.employees.delete_one({"emp_code": data["emp_code"]})
+
 
 @pytest.fixture
 def missing_field_employee_data():
-    return {
+    data = {
         "emp_code": str(uuid.uuid4()),
         "name": "Test Employee",
     }
 
+    yield data
+    db.employees.delete_one({"emp_code": data["emp_code"]})
+
 
 def test_uses_test_database():
+
     assert "attendance_test_db" in str(db.name)
 
 
 def test_create_employee(employee_data):
+
+    print("Created employee code:", employee_data["emp_code"])
 
     response = client.post("/employees", json=employee_data)
 
