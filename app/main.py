@@ -8,6 +8,7 @@ This file was written quickly by a colleague who has left the company. The happy
 works, but nobody has reviewed it. Read PROBLEM_STATEMENT.docx for what is expected of you,
 openapi.yaml for the contract and DATA_MODEL.md for what is stored in MongoDB.
 """
+
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -86,7 +87,9 @@ def create_employee(body: EmployeeIn):
 
 
 @app.get("/employees")
-def list_employees(department: Optional[str] = None, page: int = 1, page_size: int = 20):
+def list_employees(
+    department: Optional[str] = None, page: int = 1, page_size: int = 20
+):
     q = {}
     if department:
         q["department"] = department
@@ -99,7 +102,15 @@ def list_employees(department: Optional[str] = None, page: int = 1, page_size: i
 @app.post("/attendance/punch-in", status_code=201)
 def punch_in(body: PunchInIn):
     emp = db.employees.find_one({"emp_code": body.emp_code})
-    ts = datetime.fromtimestamp(body.punched_at / 1000) if body.punched_at else datetime.now()
+
+    if not emp:
+        raise HTTPException(404, "employee not found")
+
+    ts = (
+        datetime.fromtimestamp(body.punched_at / 1000)
+        if body.punched_at
+        else datetime.now()
+    )
     d = ts.date().isoformat()
     if db.attendance_logs.find_one({"emp_code": body.emp_code, "date": d}):
         raise HTTPException(409, "already punched in for this date")
