@@ -6,20 +6,6 @@ from app.main import db
 
 
 @pytest.fixture
-def employee_data():
-    data = {
-        "emp_code": str(uuid.uuid4()),
-        "name": "Test Employee",
-        "email": "test@gmail.com",
-        "department": "Engineering",
-        "joined_on": "2026-10-10",
-    }
-
-    yield data
-    db.employees.delete_one({"emp_code": data["emp_code"]})
-
-
-@pytest.fixture
 def missing_field_employee_data():
     data = {
         "emp_code": str(uuid.uuid4()),
